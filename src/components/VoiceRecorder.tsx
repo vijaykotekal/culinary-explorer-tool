@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,28 @@ export const VoiceRecorder = ({ onRecordingComplete, onLanguageDetected }: Voice
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      toast.info('Processing audio...');
+    }
+  }, [isRecording]);
+
+  // Add keyboard support for stopping recording
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Only trigger if recording is active
+      if (isRecording && (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')) {
+        event.preventDefault(); // Prevent page scroll on Space
+        stopRecording();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isRecording, stopRecording]);
 
   const startRecording = async () => {
     try {
@@ -39,18 +61,10 @@ export const VoiceRecorder = ({ onRecordingComplete, onLanguageDetected }: Voice
 
       mediaRecorder.start();
       setIsRecording(true);
-      toast.success('Recording started');
+      toast.success('Recording started - Press Enter or Space to stop');
     } catch (error) {
       console.error('Error accessing microphone:', error);
       toast.error('Failed to access microphone');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      toast.info('Processing audio...');
     }
   };
 
@@ -137,8 +151,13 @@ export const VoiceRecorder = ({ onRecordingComplete, onLanguageDetected }: Voice
 
         <div className="text-center">
           <p className="text-sm font-medium">
-            {isProcessing ? 'Analyzing...' : isRecording ? 'Recording... Tap to stop' : 'Tap to start recording'}
+            {isProcessing ? 'Analyzing...' : isRecording ? 'Recording... Press Enter or Space to stop' : 'Tap to start recording'}
           </p>
+          {isRecording && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Keyboard shortcut: Enter or Space
+            </p>
+          )}
         </div>
       </div>
     </Card>
